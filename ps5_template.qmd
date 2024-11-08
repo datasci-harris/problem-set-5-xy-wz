@@ -56,6 +56,51 @@ alt.renderers.enable("png")
 ### 1. Scraping (PARTNER 1)
 
 ```{python}
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+url = 'https://oig.hhs.gov/fraud/enforcement/'
+response = requests.get(url)
+
+soup = BeautifulSoup(response.text, 'html.parser')
+
+titles = []
+dates = []
+links = []
+categories = []
+
+enforcement_items = soup.find_all('li', class_='usa-card card--list pep-card--minimal mobile:grid-col-12')
+
+for item in enforcement_items:
+    title_tag = item.find('h2', class_='usa-card__heading')
+    title = title_tag.get_text(strip=True)
+    titles.append(title)
+
+    date_tag = item.find('span', class_='text-base-dark padding-right-105')
+    date = date_tag.get_text(strip=True) 
+    dates.append(date)
+
+    category_tag = item.find('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
+    category = category_tag.get_text(strip=True)
+    categories.append(category)
+
+    link_tag = title_tag.find('a', href=True) 
+    link = link_tag['href'] if link_tag else 'N/A'
+    if not link.startswith('http'):
+        full_link = f'https://oig.hhs.gov{link}'
+    else:
+        full_link = link
+    links.append(full_link)
+
+df = pd.DataFrame({
+    'Title': titles,
+    'Date': dates,
+    'Category': categories,
+    'Link': links
+})
+
+print(df.head())
 
 ```
 
@@ -63,10 +108,60 @@ alt.renderers.enable("png")
 ### 2. Crawling (PARTNER 1)
 
 ```{python}
+import time
+
+agencies = []
+
+for full_link in links:
+    action_response = requests.get(full_link)
+    action_response.raise_for_status()
+    action_soup = BeautifulSoup(action_response.text, 'html.parser')
+
+    agency_tag = action_soup.find('span', string='Agency:')
+    if agency_tag:
+        agency = agency_tag.find_parent('li').get_text(
+            strip=True).replace('Agency:', '').strip()
+    else:
+        agency = 'N/A'
+
+    agencies.append(agency)
+
+    time.sleep(1)
+
+df = pd.DataFrame({
+    'Title': titles,
+    'Date': dates,
+    'Category': categories,
+    'Link': links,
+    'Agency': agencies
+})
+
+print(df.head())
+
 
 ```
 
 ## Step 2: Making the scraper dynamic
+
+```{python}
+
+from datetime import datetime
+
+
+def scrape_enforcement_actions(start_month, start_year):
+    if start_year < 2013:
+        print("Year must be >= 2013")
+        return
+
+    filename = f"enforcement_actions_{start_year}_{start_month}.csv"
+    df.to_csv(filename, index=False)
+
+    print(f" Data saved to {filename}.")
+
+
+scrape_enforcement_actions(11, 2022)
+
+```
 
 ### 1. Turning the scraper into a function 
 
