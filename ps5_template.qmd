@@ -272,91 +272,93 @@ scrape_enforcement_actions(1, 2023, end_page=480)
 
 ```{python}
 
-def scrape_enforcement_actions(start_month, start_year):
+def scrape_enforcement_actions(start_month, start_year, end_page=480):
     if start_year < 2013:
-        print("Year must be >= 2013")
+        print("Year must be >= 2013. Please provide a valid year.")
         return
 
-    enforcement_data = pd.DataFrame(columns=['Title', 'Date', 'Category', 'Link', 'Agency'])
-    current_date = datetime.now()
-    current_page = 1
-    continue_scraping = True
+    titles, dates, links, categories = [], [], [], []
 
-    while continue_scraping:
-        if current_page == 1:
-            url = "https://oig.hhs.gov/fraud/enforcement/"
-        else:
-            url = f"https://oig.hhs.gov/fraud/enforcement/?page={current_page}"
+    base_url = "https://oig.hhs.gov/fraud/enforcement/"
+    page_number = 1
 
+    today = datetime.today()
+
+    while page_number <= end_page:
+        url = f"{base_url}?page={page_number}"
         response = requests.get(url)
-        if response.status_code != 200:
-            print(f"Failed to retrieve page {current_page}")
-            break
-        soup = BeautifulSoup(response.text, 'html.parser')
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
 
-        enforcement_items = soup.find_all('li', class_='usa-card card--list pep-card--minimal mobile:grid-col-12')
+        enforcement_items = soup.find_all(
+            "li", class_="usa-card card--list pep-card--minimal mobile:grid-col-12"
+        )
+
         if not enforcement_items:
-            continue_scraping = False
+            print(f"No enforcement items found on page {page_number}. Stopping.")
             break
+
+        valid_data_found = False
 
         for item in enforcement_items:
-            title_tag = item.find('h2', class_='usa-card__heading')
-            title = title_tag.get_text(strip=True) if title_tag else 'N/A'
+            title_tag = item.find("h2", class_="usa-card__heading")
+            date_tag = item.find("span", class_="text-base-dark padding-right-105")
 
-            date_tag = item.find('span', class_='text-base-dark padding-right-105')
-            date = date_tag.get_text(strip=True) if date_tag else 'N/A'
+            if not title_tag or not date_tag:
+                continue
 
-            category_tag = item.find('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
-            category = category_tag.get_text(strip=True) if category_tag else 'N/A'
+            title = title_tag.get_text(strip=True)
+            date = date_tag.get_text(strip=True)
+            date_obj = datetime.strptime(date, "%B %d, %Y")
 
-            link_tag = title_tag.find('a', href=True) if title_tag else None
-            link = link_tag['href'] if link_tag else 'N/A'
-            if link != 'N/A' and not link.startswith('http'):
-                link = f'https://oig.hhs.gov{link}'
+            if date_obj < datetime(start_year, start_month, 1):
+                continue
 
-            if link != 'N/A':
-                action_response = requests.get(link)
-                if action_response.status_code == 200:
-                    action_soup = BeautifulSoup(action_response.text, 'html.parser')
-                    agency_tag = action_soup.find('span', string='Agency:')
-                    if agency_tag:
-                        agency = agency_tag.find_parent('li').get_text(strip=True).replace('Agency:', '').strip()
-                    else:
-                        agency = 'N/A'
-                else:
-                    agency = 'N/A'
-            else:
-                agency = 'N/A'
+            valid_data_found = True
 
-            enforcement_data = pd.concat([enforcement_data, pd.DataFrame([{
-                'Title': title,
-                'Date': date,
-                'Category': category,
-                'Link': link,
-                'Agency': agency
-            }])], ignore_index=True)
+            titles.append(title)
+            dates.append(date)
 
-        next_page_tag = soup.find('a', class_='next-page-link')
-        if next_page_tag:
-            current_page += 1
-        else:
-            continue_scraping = False
+            category = item.find(
+                "li",
+                class_="display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1",
+            )
+            category_text = category.get_text(strip=True) if category else "N/A"
+            categories.append(category_text)
+
+            link = item.find("a", href=True)["href"]
+            full_link = f"https://oig.hhs.gov{link}"
+            links.append(full_link)
+
+        if not valid_data_found:
+            print(f"No valid data found on page {page_number}. Stopping.")
+            break
 
         time.sleep(1)
 
-    filename = f"enforcement_actions_{start_year}_{start_month}.csv"
-    enforcement_data.to_csv(filename, index=False)
-    
-    return enforcement_data
+        page_number += 1
 
-df = scrape_enforcement_actions(1, 2021)
+    df = pd.DataFrame(
+        {"Title": titles, "Date": dates, "Category": categories, "Link": links}
+    )
 
-print(df.head())
+    filename = f"enforcement_actions_{start_year}_{start_month}_to_present.csv"
+    df.to_csv(filename, index=False)
+
+    print(f"Scraping complete. Data saved to {filename}. Total records: {len(df)}")
+
+
+scrape_enforcement_actions(1, 2021, end_page=480)
+
+filename = "enforcement_actions_2021_1_to_present.csv"
+df = pd.read_csv(filename)
 
 total_actions = len(df)
-early_action = df.iloc[df['Date'].idxmin()]
-print(f"Total enforcement actions collected: {total_actions}")
-print(f"Earliest enforcement action: {early_action}")
+print(f"Total number of enforcement actions scraped: {total_actions}")
+
+earliest_action = df.iloc[-1]
+print(f"Earliest enforcement action: Date - {earliest_action['Date']}, Title - {earliest_action['Title']}, Link - {earliest_action['Link']}")
+
 ```
 
 ## Step 3: Plot data based on scraped data
