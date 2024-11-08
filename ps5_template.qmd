@@ -156,9 +156,6 @@ def scrape_enforcement_actions(start_month, start_year):
     filename = f"enforcement_actions_{start_year}_{start_month}.csv"
     df.to_csv(filename, index=False)
 
-    print(f" Data saved to {filename}.")
-
-
 scrape_enforcement_actions(11, 2022)
 
 ```
