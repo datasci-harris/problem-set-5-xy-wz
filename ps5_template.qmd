@@ -143,23 +143,6 @@ print(df.head())
 
 ## Step 2: Making the scraper dynamic
 
-```{python}
-
-from datetime import datetime
-
-
-def scrape_enforcement_actions(start_month, start_year):
-    if start_year < 2013:
-        print("Year must be >= 2013")
-        return
-
-    filename = f"enforcement_actions_{start_year}_{start_month}.csv"
-    df.to_csv(filename, index=False)
-
-scrape_enforcement_actions(11, 2022)
-
-```
-
 ### 1. Turning the scraper into a function 
 
 * a. Pseudo-Code (PARTNER 2)
