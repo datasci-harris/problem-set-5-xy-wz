@@ -297,6 +297,91 @@ print(f"Earliest enforcement action: {early_action}")
 
 ```{python}
 
+def scrape_enforcement_actions(start_month, start_year):
+    if start_year < 2013:
+        print("Year must be >= 2013")
+        return
+
+    enforcement_data = pd.DataFrame(columns=['Title', 'Date', 'Category', 'Link', 'Agency'])
+    current_date = datetime.now()
+    current_page = 1
+    continue_scraping = True
+
+    while continue_scraping:
+        if current_page == 1:
+            url = "https://oig.hhs.gov/fraud/enforcement/"
+        else:
+            url = f"https://oig.hhs.gov/fraud/enforcement/?page={current_page}"
+
+        response = requests.get(url)
+        if response.status_code != 200:
+            print(f"Failed to retrieve page {current_page}")
+            break
+        soup = BeautifulSoup(response.text, 'html.parser')
+
+        enforcement_items = soup.find_all('li', class_='usa-card card--list pep-card--minimal mobile:grid-col-12')
+        if not enforcement_items:
+            continue_scraping = False
+            break
+
+        for item in enforcement_items:
+            title_tag = item.find('h2', class_='usa-card__heading')
+            title = title_tag.get_text(strip=True) if title_tag else 'N/A'
+
+            date_tag = item.find('span', class_='text-base-dark padding-right-105')
+            date = date_tag.get_text(strip=True) if date_tag else 'N/A'
+
+            category_tag = item.find('li', class_='display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1')
+            category = category_tag.get_text(strip=True) if category_tag else 'N/A'
+
+            link_tag = title_tag.find('a', href=True) if title_tag else None
+            link = link_tag['href'] if link_tag else 'N/A'
+            if link != 'N/A' and not link.startswith('http'):
+                link = f'https://oig.hhs.gov{link}'
+
+            if link != 'N/A':
+                action_response = requests.get(link)
+                if action_response.status_code == 200:
+                    action_soup = BeautifulSoup(action_response.text, 'html.parser')
+                    agency_tag = action_soup.find('span', string='Agency:')
+                    if agency_tag:
+                        agency = agency_tag.find_parent('li').get_text(strip=True).replace('Agency:', '').strip()
+                    else:
+                        agency = 'N/A'
+                else:
+                    agency = 'N/A'
+            else:
+                agency = 'N/A'
+
+            enforcement_data = pd.concat([enforcement_data, pd.DataFrame([{
+                'Title': title,
+                'Date': date,
+                'Category': category,
+                'Link': link,
+                'Agency': agency
+            }])], ignore_index=True)
+
+        next_page_tag = soup.find('a', class_='next-page-link')
+        if next_page_tag:
+            current_page += 1
+        else:
+            continue_scraping = False
+
+        time.sleep(1)
+
+    filename = f"enforcement_actions_{start_year}_{start_month}.csv"
+    enforcement_data.to_csv(filename, index=False)
+    
+    return enforcement_data
+
+df = scrape_enforcement_actions(1, 2021)
+
+print(df.head())
+
+total_actions = len(df)
+early_action = df.iloc[df['Date'].idxmin()]
+print(f"Total enforcement actions collected: {total_actions}")
+print(f"Earliest enforcement action: {early_action}")
 ```
 
 ## Step 3: Plot data based on scraped data
