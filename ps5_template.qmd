@@ -147,7 +147,7 @@ print(df.head())
 
 * a. Pseudo-Code (PARTNER 2)
 
-```{python}
+# Ans:
 Function scrape_enforcement_actions(start_month, start_year):
     # 1. Input Validation
     If start_year < 2013:
@@ -199,7 +199,6 @@ Function scrape_enforcement_actions(start_month, start_year):
     filename = "enforcement_actions_<start_year>_<start_month>.csv"
     Save the DataFrame as a CSV file
 
-```
 
 * b. Create Dynamic Scraper (PARTNER 2)
 
