@@ -430,7 +430,7 @@ state_counts = state_data['State'].value_counts().reset_index()
 state_counts.columns = ['State', 'Count']
 
 gdf_states = gpd.read_file(
-    "/Users/cynthia/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
+    "/Users/hahei/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
 
 gdf_states['NAME'] = gdf_states['NAME'].str.strip().str.title()
 
@@ -459,6 +459,58 @@ plt.show()
 ### 2. Map by District (PARTNER 2)
 
 ```{python}
+file_path = "enforcement_actions_2021_1.csv"
+data = pd.read_csv(file_path)
+
+data["District"] = data["Agency"].apply(
+    lambda x: (
+        re.search(r"District of [A-Za-z ]+", x).group(0)
+        if pd.notnull(x) and "District" in x
+        else None
+    )
+)
+
+district_data = data.dropna(subset=["District"]).copy()
+
+district_data["District"] = (
+    district_data["District"]
+    .str.replace("U\.S\. Attorney's Office, ", "")
+    .str.replace("District of ", "")
+    .str.strip()
+)
+
+district_counts = district_data["District"].value_counts().reset_index()
+district_counts.columns = ["District", "Count"]
+
+shapefile_path = "/Users/hahei/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp"
+gdf_districts = gpd.read_file(shapefile_path)
+
+gdf_districts["District"] = gdf_districts["NAME"].str.strip()
+
+
+gdf_merged = gdf_districts.merge(
+    district_counts, how="left", left_on="District", right_on="District"
+)
+gdf_merged["Count"] = gdf_merged["Count"].fillna(0)
+
+fig, ax = plt.subplots(1, 1, figsize=(20, 15))
+gdf_merged.boundary.plot(ax=ax, linewidth=1, edgecolor="black")
+gdf_merged.plot(
+    column="Count",
+    cmap="Blues",
+    linewidth=0.8,
+    ax=ax,
+    edgecolor="black",
+    legend=True,
+    legend_kwds={"label": "Number of Enforcement Actions", "shrink": 0.6},
+)
+
+ax.set_xlim(-130, -60)
+ax.set_ylim(20, 55)
+plt.title("Number of Enforcement Actions by US Attorney District", fontsize=20)
+plt.axis("off")
+plt.show()
+
 
 ```
 
@@ -466,6 +518,7 @@ plt.show()
 
 ### 1. Merge zip code shapefile with population
 ```{python}
+
 
 ```
 
@@ -476,5 +529,6 @@ plt.show()
 
 ### 3. Map the action ratio in each district
 ```{python}
+
 
 ```
