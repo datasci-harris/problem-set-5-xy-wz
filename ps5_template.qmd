@@ -187,170 +187,102 @@ print(df.head())
 
 * b. Create Dynamic Scraper (PARTNER 2)
 
+
 ```{python}
+from datetime import datetime
+
 def scrape_enforcement_actions(start_month, start_year, end_page=480):
     if start_year < 2013:
         print("Year must be >= 2013. Please provide a valid year.")
         return
 
-    titles, dates, links, categories = [], [], [], []
+    titles, dates, links, categories, agencies = [], [], [], [], []
 
-    base_url = "https://oig.hhs.gov/fraud/enforcement/"
+    base_url = 'https://oig.hhs.gov/fraud/enforcement/'
     page_number = 1
-
-    today = datetime.today()
 
     while page_number <= end_page:
         url = f"{base_url}?page={page_number}"
         response = requests.get(url)
         response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-        enforcement_items = soup.find_all(
-            "li", class_="usa-card card--list pep-card--minimal mobile:grid-col-12"
-        )
+        enforcement_items = soup.find_all('li', class_='usa-card card--list pep-card--minimal mobile:grid-col-12')
 
         if not enforcement_items:
-            print(f"No enforcement items found on page {page_number}. Stopping.")
             break
 
         valid_data_found = False
 
         for item in enforcement_items:
-            title_tag = item.find("h2", class_="usa-card__heading")
-            date_tag = item.find("span", class_="text-base-dark padding-right-105")
+            try:
+                title = item.find('h2', class_='usa-card__heading').get_text(strip=True)
+                date = item.find('span', class_='text-base-dark padding-right-105').get_text(strip=True)
+                date_obj = datetime.strptime(date, "%B %d, %Y")
 
-            if not title_tag or not date_tag:
+                # Stop if the date is earlier than start date
+                if date_obj < datetime(start_year, start_month, 1):
+                    continue
+
+                valid_data_found = True
+                category = item.find('ul', class_='display-inline add-list-reset').get_text(strip=True) if item.find('ul', class_='display-inline add-list-reset') else 'N/A'
+                link = item.find('a', href=True)['href']
+                full_link = f'https://oig.hhs.gov{link}'
+            except AttributeError:
                 continue
-
-            title = title_tag.get_text(strip=True)
-            date = date_tag.get_text(strip=True)
-            date_obj = datetime.strptime(date, "%B %d, %Y")
-
-            if date_obj < datetime(start_year, start_month, 1):
-                continue
-
-            valid_data_found = True
 
             titles.append(title)
             dates.append(date)
-
-            category = item.find(
-                "li",
-                class_="display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1",
-            )
-            category_text = category.get_text(strip=True) if category else "N/A"
-            categories.append(category_text)
-
-            link = item.find("a", href=True)["href"]
-            full_link = f"https://oig.hhs.gov{link}"
+            categories.append(category)
             links.append(full_link)
-
-        if not valid_data_found:
-            print(f"No valid data found on page {page_number}. Stopping.")
-            break
 
         time.sleep(1)
 
+        if not valid_data_found:
+            break
+
         page_number += 1
 
-    df = pd.DataFrame(
-        {"Title": titles, "Date": dates, "Category": categories, "Link": links}
-    )
+    def get_agency_info(link):
+        try:
+            action_response = requests.get(link)
+            action_response.raise_for_status()
+            action_soup = BeautifulSoup(action_response.text, 'html.parser')
 
-    filename = f"enforcement_actions_{start_year}_{start_month}_to_present.csv"
-    df.to_csv(filename, index=False)
+            agency_tag = action_soup.find('span', string='Agency:')
+            agency = agency_tag.find_parent('li').get_text(strip=True).replace('Agency:', '').strip() if agency_tag else 'N/A'
+        except (requests.exceptions.RequestException, AttributeError):
+            agency = 'N/A'
+        return agency
 
-    print(f"Scraping complete. Data saved to {filename}. Total records: {len(df)}")
+    if links:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            agencies = list(executor.map(get_agency_info, links))
 
+        df = pd.DataFrame({
+            'Title': titles,
+            'Date': dates,
+            'Category': categories,
+            'Link': links,
+            'Agency': agencies
+        })
 
-scrape_enforcement_actions(1, 2023, end_page=480)
+        filename = f"enforcement_actions_{start_year}_{start_month}.csv"
+        df.to_csv(filename, index=False)
+
+        print(f"Scraping complete. Data saved to {filename}.")
+
+scrape_enforcement_actions(1, 2023)
+
 ```
 
 
 * c. Test Partner's Code (PARTNER 1)
 
 ```{python}
+scrape_enforcement_actions(1, 2021)
 
-def scrape_enforcement_actions(start_month, start_year, end_page=480):
-    if start_year < 2013:
-        print("Year must be >= 2013. Please provide a valid year.")
-        return
-
-    titles, dates, links, categories = [], [], [], []
-
-    base_url = "https://oig.hhs.gov/fraud/enforcement/"
-    page_number = 1
-
-    today = datetime.today()
-
-    while page_number <= end_page:
-        url = f"{base_url}?page={page_number}"
-        response = requests.get(url)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        enforcement_items = soup.find_all(
-            "li", class_="usa-card card--list pep-card--minimal mobile:grid-col-12"
-        )
-
-        if not enforcement_items:
-            print(f"No enforcement items found on page {page_number}. Stopping.")
-            break
-
-        valid_data_found = False
-
-        for item in enforcement_items:
-            title_tag = item.find("h2", class_="usa-card__heading")
-            date_tag = item.find("span", class_="text-base-dark padding-right-105")
-
-            if not title_tag or not date_tag:
-                continue
-
-            title = title_tag.get_text(strip=True)
-            date = date_tag.get_text(strip=True)
-            date_obj = datetime.strptime(date, "%B %d, %Y")
-
-            if date_obj < datetime(start_year, start_month, 1):
-                continue
-
-            valid_data_found = True
-
-            titles.append(title)
-            dates.append(date)
-
-            category = item.find(
-                "li",
-                class_="display-inline-block usa-tag text-no-lowercase text-base-darkest bg-base-lightest margin-right-1",
-            )
-            category_text = category.get_text(strip=True) if category else "N/A"
-            categories.append(category_text)
-
-            link = item.find("a", href=True)["href"]
-            full_link = f"https://oig.hhs.gov{link}"
-            links.append(full_link)
-
-        if not valid_data_found:
-            print(f"No valid data found on page {page_number}. Stopping.")
-            break
-
-        time.sleep(1)
-
-        page_number += 1
-
-    df = pd.DataFrame(
-        {"Title": titles, "Date": dates, "Category": categories, "Link": links}
-    )
-
-    filename = f"enforcement_actions_{start_year}_{start_month}_to_present.csv"
-    df.to_csv(filename, index=False)
-
-    print(f"Scraping complete. Data saved to {filename}. Total records: {len(df)}")
-
-
-scrape_enforcement_actions(1, 2021, end_page=480)
-
-filename = "enforcement_actions_2021_1_to_present.csv"
+filename = "enforcement_actions_2021_1.csv"
 df = pd.read_csv(filename)
 
 total_actions = len(df)
@@ -366,33 +298,35 @@ print(f"Earliest enforcement action: Date - {earliest_action['Date']}, Title - {
 ### 1. Plot the number of enforcement actions over time (PARTNER 2)
 
 ```{python}
-import pandas as pd
-import matplotlib.pyplot as plt
+import altair as alt
 
-file_path = "/Users/hahei/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1_to_present.csv"
-
+file_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
 data = pd.read_csv(file_path)
 
 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
-
 data = data.dropna(subset=['Date'])
 
 data['YearMonth'] = data['Date'].dt.to_period('M')
-monthly_counts = data.groupby('YearMonth').size()
 
-plt.figure(figsize=(12, 6))
-monthly_counts.plot(kind='line', marker='o')
-plt.title("Number of Enforcement Actions Over Time (Since January 2021)", fontsize=14)
-plt.xlabel("Year-Month", fontsize=12)
-plt.ylabel("Number of Actions", fontsize=12)
-plt.grid(True)
-plt.xticks(rotation=45)
-plt.tight_layout()
+monthly_counts = data.groupby('YearMonth').size().reset_index(name='Count')
 
-plt.savefig("/Users/hahei/Desktop/enforcement_actions_plot.png")
-plt.show()
+monthly_counts['YearMonth'] = monthly_counts['YearMonth'].astype(str)
+
+chart = alt.Chart(monthly_counts).mark_line(point=True).encode(
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.Y('Count:Q', title='Number of Actions'),
+    tooltip=['YearMonth', 'Count']
+).properties(
+    title='Number of Enforcement Actions Over Time (Since January 2021)',
+    width=800,
+    height=400
+)
+
+chart.show()
 
 ```
+
+
 
 ### 2. Plot the number of enforcement actions categorized: (PARTNER 1)
 
@@ -400,12 +334,67 @@ plt.show()
 
 ```{python}
 
+file_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
+data = pd.read_csv(file_path)
+
+data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
+data = data.dropna(subset=['Date'])
+data['YearMonth'] = data['Date'].dt.to_period('M')
+
+data['Category'] = data['Category'].apply(lambda x: 'Criminal and Civil Actions' if 'Criminal and Civil Actions' in x else 'State Enforcement Agencies')
+
+def assign_subcategory(title):
+    title_lower = title.lower()
+    if 'health' in title_lower or 'medicare' in title_lower or 'medicaid' in title_lower:
+        return 'Health Care Fraud'
+    elif 'financial' in title_lower or 'bank' in title_lower or 'money laundering' in title_lower:
+        return 'Financial Fraud'
+    elif 'drug' in title_lower or 'narcotic' in title_lower:
+        return 'Drug Enforcement'
+    elif 'bribe' in title_lower or 'corrupt' in title_lower or 'kickback' in title_lower:
+        return 'Bribery/Corruption'
+    else:
+        return 'Other'
+
+data['SubCategory'] = data.apply(lambda row: assign_subcategory(row['Title']) if row['Category'] == 'Criminal and Civil Actions' else None, axis=1)
+
+main_category_counts = data.groupby(['YearMonth', 'Category']).size().reset_index(name='Count')
+main_category_counts['YearMonth'] = main_category_counts['YearMonth'].astype(str)
+
+main_chart = alt.Chart(main_category_counts).mark_line(point=True).encode(
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.Y('Count:Q', title='Number of Actions'),
+    color='Category:N',
+    tooltip=['YearMonth', 'Category', 'Count']
+).properties(
+    title='Number of Enforcement Actions: Criminal and Civil Actions vs. State Enforcement Agencies',
+    width=800,
+    height=400
+).interactive()
+
+main_chart.show()
+
 ```
 
 * based on five topics
 
 ```{python}
+subcategory_data = data[data['Category'] == 'Criminal and Civil Actions']
+subcategory_counts = subcategory_data.groupby(['YearMonth', 'SubCategory']).size().reset_index(name='Count')
+subcategory_counts['YearMonth'] = subcategory_counts['YearMonth'].astype(str)
 
+subcategory_chart = alt.Chart(subcategory_counts).mark_line(point=True).encode(
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.Y('Count:Q', title='Number of Actions'),
+    color='SubCategory:N',
+    tooltip=['YearMonth', 'SubCategory', 'Count']
+).properties(
+    title='Number of Enforcement Actions by SubCategory (Criminal and Civil Actions)',
+    width=800,
+    height=400
+).interactive()
+
+subcategory_chart.show()
 ```
 
 ## Step 4: Create maps of enforcement activity
@@ -414,8 +403,56 @@ plt.show()
 
 ```{python}
 
-```
+import matplotlib.pyplot as plt
 
+state_data = data[data['Agency'].str.contains(
+    'State of', na=False, case=False)]
+
+
+def extract_state_name(agency):
+    parts = agency.split()
+    if "State" in parts and "of" in parts:
+        index = parts.index("of") + 1
+        if index < len(parts):
+            return parts[index]
+    return None
+
+
+state_data['State'] = state_data['Agency'].apply(extract_state_name)
+
+state_data = state_data.dropna(subset=['State'])
+
+state_data['State'] = state_data['State'].str.strip().str.title()
+
+state_counts = state_data['State'].value_counts().reset_index()
+state_counts.columns = ['State', 'Count']
+
+gdf_states = gpd.read_file(
+    "/Users/cynthia/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
+
+gdf_states['NAME'] = gdf_states['NAME'].str.strip().str.title()
+
+gdf_merged = gdf_states.merge(
+    state_counts, how='left', left_on='NAME', right_on='State')
+gdf_merged['Count'] = gdf_merged['Count'].fillna(0)
+
+fig, ax = plt.subplots(1, 1, figsize=(20, 15))
+
+gdf_merged.boundary.plot(ax=ax, linewidth=1, edgecolor='black')
+gdf_merged.plot(column='Count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='black', legend=True,
+                legend_kwds={'label': "Number of Enforcement Actions",
+                             'shrink': 0.6,
+                             })
+
+ax.set_xlim(-130, -60)
+ax.set_ylim(20, 55)
+
+plt.title('Number of State-Level Enforcement Actions by State (Since January 2021)', fontsize=20)
+plt.axis('off')
+
+plt.show()
+
+```
 
 ### 2. Map by District (PARTNER 2)
 
