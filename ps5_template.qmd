@@ -1,7 +1,7 @@
 ---
-title: "title"
-author: "author"
-date: "date"
+title: "Problem Set 5"
+author: "Xinyi Zhou & Wuzhen Han"
+date: "11/9/2024"
 format: 
   pdf:
     include-in-header: 
@@ -26,12 +26,12 @@ output:
 ## Submission Steps (10 pts)
 1. This problem set is a paired problem set.
 2. Play paper, scissors, rock to determine who goes first. Call that person *Partner 1*.
-    - Partner 1 (name and cnet ID):
-    - Partner 2 (name and cnet ID):
+    - Partner 1 (name and cnet ID): Xinyi Zhou (xzhou66)
+    - Partner 2 (name and cnet ID): Wuzhen Han (hanwuzhen)
 3. Partner 1 will accept the `ps5` and then share the link it creates with their partner. You can only share it with one partner so you will not be able to change it after your partner has accepted. 
-4. "This submission is our work alone and complies with the 30538 integrity policy." Add your initials to indicate your agreement: \*\*\_\_\*\* \*\*\_\_\*\*
-5. "I have uploaded the names of anyone else other than my partner and I worked with on the problem set **[here](https://docs.google.com/forms/d/185usrCREQaUbvAXpWhChkjghdGgmAZXA3lPWpXLLsts/edit)**"  (1 point)
-6. Late coins used this pset: \*\*\_\_\*\* Late coins left after submission: \*\*\_\_\*\*
+4. "This submission is our work alone and complies with the 30538 integrity policy." Add your initials to indicate your agreement: xyz& wzh \*\*\_\_\*\* \*\*\_\_\*\*
+5. "I have uploaded the names of anyone else other than my partner and I worked with on the problem set **[here](https://docs.google.com/forms/d/185usrCREQaUbvAXpWhChkjghdGgmAZXA3lPWpXLLsts/edit)**" xyz&wzh (1 point)
+6. Late coins used this pset: xyz&wzh:used 1\*\*\_\_\*\* Late coins left after submission: both left with 2\*\*\_\_\*\*
 7. Knit your `ps5.qmd` to an PDF file to make `ps5.pdf`, 
     * The PDF should not be more than 25 pages. Use `head()` and re-size figures when appropriate. 
 8. (Partner 1): push  `ps5.qmd` and `ps5.pdf` to your github repo.
@@ -70,7 +70,6 @@ import re
 ### 1. Scraping (PARTNER 1)
 
 ```{python}
-
 
 url = 'https://oig.hhs.gov/fraud/enforcement/'
 response = requests.get(url)
@@ -198,7 +197,7 @@ print(df.head())
 
 
 ```{python}
-
+#| eval: false 
 def scrape_enforcement_actions(start_month, start_year, end_page=480):
     if start_year < 2013:
         print("Year must be >= 2013. Please provide a valid year.")
@@ -289,6 +288,8 @@ scrape_enforcement_actions(1, 2023)
 * c. Test Partner's Code (PARTNER 1)
 
 ```{python}
+#| eval: false 
+
 scrape_enforcement_actions(1, 2021)
 
 filename = "enforcement_actions_2021_1.csv"
@@ -321,14 +322,15 @@ monthly_counts = data.groupby('YearMonth').size().reset_index(name='Count')
 monthly_counts['YearMonth'] = monthly_counts['YearMonth'].astype(str)
 
 chart = alt.Chart(monthly_counts).mark_line(point=True).encode(
-    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(format='%Y-%m', labelAngle=-45)),  
     alt.Y('Count:Q', title='Number of Actions'),
     tooltip=['YearMonth', 'Count']
 ).properties(
     title='Number of Enforcement Actions Over Time (Since January 2021)',
-    width=800,
-    height=400
-)
+    width=600,
+    height=300
+).interactive()
+
 
 chart.show()
 
@@ -340,11 +342,12 @@ chart.show()
 
 * based on "Criminal and Civil Actions" vs. "State Enforcement Agencies"
 
-```{python}
 
+```{python}
 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
 data = data.dropna(subset=['Date'])
-data['YearMonth'] = data['Date'].dt.to_period('M')
+
+data['YearMonth'] = data['Date'].dt.to_period('M').astype(str)
 
 data['Category'] = data['Category'].apply(lambda x: 'Criminal and Civil Actions' if 'Criminal and Civil Actions' in x else 'State Enforcement Agencies')
 
@@ -364,17 +367,16 @@ def assign_subcategory(title):
 data['SubCategory'] = data.apply(lambda row: assign_subcategory(row['Title']) if row['Category'] == 'Criminal and Civil Actions' else None, axis=1)
 
 main_category_counts = data.groupby(['YearMonth', 'Category']).size().reset_index(name='Count')
-main_category_counts['YearMonth'] = main_category_counts['YearMonth'].astype(str)
 
 main_chart = alt.Chart(main_category_counts).mark_line(point=True).encode(
-    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45, format='%Y-%b')), 
     alt.Y('Count:Q', title='Number of Actions'),
-    color='Category:N',
+    color=alt.Color('Category:N', legend=alt.Legend(labelFontSize=9)), 
     tooltip=['YearMonth', 'Category', 'Count']
 ).properties(
     title='Number of Enforcement Actions: Criminal and Civil Actions vs. State Enforcement Agencies',
-    width=800,
-    height=400
+    width=500,
+    height=250
 ).interactive()
 
 main_chart.show()
@@ -389,17 +391,18 @@ subcategory_counts = subcategory_data.groupby(['YearMonth', 'SubCategory']).size
 subcategory_counts['YearMonth'] = subcategory_counts['YearMonth'].astype(str)
 
 subcategory_chart = alt.Chart(subcategory_counts).mark_line(point=True).encode(
-    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45)),
+    alt.X('YearMonth:T', title='Year-Month', axis=alt.Axis(labelAngle=-45, format='%Y-%b')), 
     alt.Y('Count:Q', title='Number of Actions'),
-    color='SubCategory:N',
+    color=alt.Color('SubCategory:N', legend=alt.Legend(labelFontSize=8)),  
     tooltip=['YearMonth', 'SubCategory', 'Count']
 ).properties(
     title='Number of Enforcement Actions by SubCategory (Criminal and Civil Actions)',
-    width=800,
-    height=400
+    width=500,
+    height=250
 ).interactive()
 
 subcategory_chart.show()
+
 ```
 
 ## Step 4: Create maps of enforcement activity
@@ -447,77 +450,89 @@ gdf_merged.plot(column='Count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='bl
                              'shrink': 0.6,
                              })
 
-ax.set_aspect('equal')
-ax.set_xlim(-180, -50)
-ax.set_ylim(15, 75)
+
 
 plt.title('Number of State-Level Enforcement Actions by State (Since January 2021)', fontsize=20)
 plt.axis('off')
-
+ax.set_aspect('equal')
+ax.set_xlim(-180, -50)
+ax.set_ylim(15, 75)
 plt.show()
 
 ```
 
 ### 2. Map by District (PARTNER 2)
 
+
 ```{python}
 
-def clean_district_name(name):
-    if pd.isna(name):
+enforcement_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
+shapefile_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp"
+
+enforcement_data = pd.read_csv(enforcement_data_path)
+enforcement_data['Date'] = pd.to_datetime(enforcement_data['Date'], errors='coerce')
+enforcement_data = enforcement_data[enforcement_data['Date'] >= '2021-01-01']
+
+def extract_district_name(agency):
+    if pd.isna(agency):
         return None
-    if 'District of' in name:
-        return name.split('District of ')[-1].strip().lower()
-    elif 'District' in name:
-        return name.split('District ')[-1].strip().lower()
-    elif 'State of' in name or ',' not in name:
-        return name.split('State of ')[-1].strip().lower()
+
+    agency = agency.lower().strip()
+
+    # Specific matches for multi-district regions and known variations
+    if "northern district of florida" in agency:
+        return "northern district of florida"
+    elif "middle district of florida" in agency:
+        return "middle district of florida"
+    elif "southern district of florida" in agency:
+        return "southern district of florida"
+    elif "eastern district of pennsylvania" in agency:
+        return "eastern district of pennsylvania"
+    elif "western district of pennsylvania" in agency:
+        return "western district of pennsylvania"
+    elif "middle district of pennsylvania" in agency:
+        return "middle district of pennsylvania"
+    elif "district of columbia" in agency:
+        return "district of columbia"
+    elif "northern district of tennessee" in agency:
+        return "northern district of tennessee"
+    elif "middle district of tennessee" in agency:
+        return "middle district of tennessee"
+    elif "western district of tennessee" in agency:
+        return "western district of tennessee"
+    elif "district of idaho boise" in agency:
+        return "district of idaho"
+    elif "southern district of texas and u" in agency:
+        return "southern district of texas"
+    elif "southern district of pennsylvania" in agency:
+        return "southern district of pennsylvania"
+    elif "eastern district of pennsylvani" in agency:
+        return "eastern district of pennsylvania"
+
+    match = re.search(r'((?:northern|southern|eastern|western|central)?\s*district of [a-z\s]+)', agency)
+    if match:
+        return match.group(0).strip().lower()
+    
     return None
 
-data['cleaned_district'] = data['Agency'].apply(clean_district_name)
-data = data.dropna(subset=['cleaned_district'])
+enforcement_data['cleaned_district'] = enforcement_data['Agency'].apply(extract_district_name)
+enforcement_data = enforcement_data.dropna(subset=['cleaned_district'])
 
-district_counts = data['cleaned_district'].value_counts().reset_index()
+district_counts = enforcement_data['cleaned_district'].value_counts().reset_index()
 district_counts.columns = ['district', 'count']
 
-shapefile_path = '/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp'
 us_districts_gdf = gpd.read_file(shapefile_path)
+us_districts_gdf['district'] = us_districts_gdf['judicial_d'].str.lower().str.strip()
 
-us_districts_gdf['district'] = us_districts_gdf['judicial_d'].str.replace('District of ', '').str.replace('District ', '').str.strip().str.lower()
-
-manual_mappings = {
-    'pennsylvania': ['eastern pennsylvania', 'western pennsylvania', 'middle pennsylvania'],
-    'new york': ['northern new york', 'southern new york', 'eastern new york', 'western new york'],
-    'texas': ['northern texas', 'southern texas', 'eastern texas', 'western texas'],
-    'florida': ['northern florida', 'middle florida', 'southern florida'],
-    'california': ['northern california', 'eastern california', 'central california', 'southern california'],
-    'north carolina': ['eastern north carolina', 'middle north carolina', 'western north carolina'],
-}
-
-expanded_district_counts = pd.DataFrame()
-for state, districts in manual_mappings.items():
-    if state in district_counts['district'].values:
-        count = district_counts[district_counts['district'] == state]['count'].values[0]
-        for district in districts:
-            expanded_district_counts = pd.concat([expanded_district_counts, pd.DataFrame({'district': [district], 'count': [count / len(districts)]})], ignore_index=True)
-
-district_counts = pd.concat([district_counts[~district_counts['district'].isin(manual_mappings.keys())], expanded_district_counts], ignore_index=True)
-
-merged_gdf = us_districts_gdf.merge(district_counts, how='left', left_on='district', right_on='district')
-
-print("First few rows of merged GeoDataFrame:")
-print(merged_gdf[['district', 'count']].head())
-
-unmatched_districts = district_counts[~district_counts['district'].isin(merged_gdf['district'])]
-print("Unmatched districts:")
-print(unmatched_districts)
+merged_gdf = us_districts_gdf.merge(district_counts, how='left', on='district')
 
 merged_gdf['count'] = merged_gdf['count'].fillna(0)
-fig, ax = plt.subplots(1, 1, figsize=(25, 15))
+
+fig, ax = plt.subplots(1, 1, figsize=(15, 10))
 merged_gdf.plot(column='count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='black', legend=True,
-                legend_kwds={'label': "Number of Enforcement Actions",
-                             'shrink': 0.6,
-                             })
+                legend_kwds={'label': "Number of Enforcement Actions", 'shrink': 0.6})
 plt.title('Number of Enforcement Actions by US Attorney District')
+plt.axis('off')
 ax.set_aspect('equal')
 ax.set_xlim(-180, -50)
 ax.set_ylim(15, 75)
@@ -525,6 +540,9 @@ plt.axis('off')
 plt.show()
 
 ```
+
+
+
 
 
 ## Extra Credit
@@ -532,102 +550,105 @@ plt.show()
 ### 1. Merge zip code shapefile with population
 ```{python}
 
-
-import pandas as pd
-import geopandas as gpd
-import matplotlib.pyplot as plt
-import os
-
-shapefile_path = "/Users/cynthia/Desktop/gz_2010_us_860_00_500k/gz_2010_us_860_00_500k.shp"  
-population_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/population/2020_data.csv"  
+population_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/population/2020_data.csv"
 
 population_data = pd.read_csv(population_data_path)
-population_data = population_data[['NAME', 'P1_001N']].copy()  
-population_data = population_data.rename(columns={'NAME': 'ZIPCode', 'P1_001N': 'Population'})
+population_data = population_data[['GEO_ID', 'NAME', 'P1_001N']].rename(columns={'NAME': 'ZIPCode', 'P1_001N': 'Population'})
 population_data['ZIPCode'] = population_data['ZIPCode'].str.extract(r'(\d{5})')[0]
 population_data['Population'] = pd.to_numeric(population_data['Population'], errors='coerce').fillna(0)
 
-zip_shapefile = gpd.read_file(shapefile_path)
-zip_shapefile = zip_shapefile.rename(columns={'ZCTA5': 'ZIPCode'})
-zip_shapefile['ZIPCode'] = zip_shapefile['ZIPCode'].astype(str)
+zip_gdf = gpd.read_file("/Users/cynthia/Desktop/gz_2010_us_860_00_500k/gz_2010_us_860_00_500k.shp")
+zip_gdf = zip_gdf.rename(columns={'ZCTA5': 'ZIPCode'})
+zip_gdf['ZIPCode'] = zip_gdf['ZIPCode'].astype(str)
 
-merged_gdf = zip_shapefile.merge(population_data, how='left', on='ZIPCode')
-
-print(merged_gdf.head())
-
+merged_gdf = zip_gdf.merge(population_data, on='ZIPCode', how='left')
 
 
 ```
 
 ### 2. Conduct spatial join
+
 ```{python}
-zip_shapefile_path = "/Users/cynthia/Desktop/gz_2010_us_860_00_500k/gz_2010_us_860_00_500k.shp"  
-population_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/population/2020_data.csv"  
-district_shapefile_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp"  # District shapefile path
-
-import pandas as pd
-import geopandas as gpd
-
-population_data = pd.read_csv(population_data_path)
-population_data = population_data[['NAME', 'P1_001N']].copy()
-population_data = population_data.rename(columns={'NAME': 'ZIPCode', 'P1_001N': 'Population'})
-population_data['ZIPCode'] = population_data['NAME'].str.extract(r'(\d{5})')[0]
-population_data['Population'] = pd.to_numeric(population_data['Population'], errors='coerce').fillna(0)
-
-zip_gdf = gpd.read_file(zip_shapefile_path)
-zip_gdf = zip_gdf.rename(columns={'ZCTA5': 'ZIPCode'})
-zip_gdf['ZIPCode'] = zip_gdf['ZIPCode'].astype(str)
-
-zip_gdf = zip_gdf.merge(population_data, on='ZIPCode', how='left')
+district_shapefile_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp"
 
 district_gdf = gpd.read_file(district_shapefile_path)
-zip_gdf = zip_gdf.to_crs(district_gdf.crs) 
+district_gdf = district_gdf.rename(columns={'judicial_d': 'district'})
+district_gdf['district'] = district_gdf['district'].str.lower().str.strip()
 
-zip_district_join = gpd.sjoin(zip_gdf, district_gdf, how="inner", predicate="within")
+merged_gdf = merged_gdf.to_crs(district_gdf.crs)
 
-district_population = zip_district_join.groupby('judicial_d')['Population'].sum().reset_index()
-district_population = district_population.rename(columns={'judicial_d': 'District', 'Population': 'TotalPopulation'})
-
-print(district_population)
+zip_district_join = gpd.sjoin(merged_gdf, district_gdf, how="inner", predicate="within")
+district_population = zip_district_join.groupby('district')['Population'].sum().reset_index()
+district_population.columns = ['district', 'totalpopulation']
 
 
 ```
 
 ### 3. Map the action ratio in each district
 
-
 ```{python}
-enforcement_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
-enforcement_data = pd.read_csv(enforcement_data_path)
+import re
 
-enforcement_data['Date'] = pd.to_datetime(enforcement_data['Date'], errors='coerce')
-enforcement_data = enforcement_data[enforcement_data['Date'] >= '2021-01-01']
+def extract_district_name(agency):
+    if pd.isna(agency):
+        return None
+    agency = agency.lower().strip()
+    
+    if "northern district of florida" in agency:
+        return "northern district of florida"
+    elif "middle district of florida" in agency:
+        return "middle district of florida"
+    elif "southern district of florida" in agency:
+        return "southern district of florida"
+    elif "eastern district of pennsylvania" in agency:
+        return "eastern district of pennsylvania"
+    elif "western district of pennsylvania" in agency:
+        return "western district of pennsylvania"
+    elif "middle district of pennsylvania" in agency:
+        return "middle district of pennsylvania"
+    elif "district of columbia" in agency:
+        return "district of columbia"
+    elif "northern district of tennessee" in agency:
+        return "northern district of tennessee"
+    elif "middle district of tennessee" in agency:
+        return "middle district of tennessee"
+    elif "western district of tennessee" in agency:
+        return "western district of tennessee"
+    elif "district of idaho boise" in agency:
+        return "district of idaho"
+    elif "southern district of texas and u" in agency:
+        return "southern district of texas"
+    elif "southern district of pennsylvania" in agency:
+        return "southern district of pennsylvania"
+    elif "eastern district of pennsylvani" in agency:
+        return "eastern district of pennsylvania"
 
-enforcement_data['District'] = enforcement_data['Agency'].str.extract(r'(\b.*District of .*\b)', expand=False)
+    match = re.search(r'((?:northern|southern|eastern|western|central)?\s*district of [a-z\s]+)', agency)
+    if match:
+        return match.group(0).strip().lower()
+    
+    return None
 
-enforcement_counts = enforcement_data.groupby('District').size().reset_index(name='EnforcementActions')
+enforcement_data['district'] = enforcement_data['Agency'].apply(extract_district_name)
+enforcement_data = enforcement_data.dropna(subset=['district'])
 
-district_gdf = gpd.read_file(district_shapefile_path)
+district_enforcement_counts = enforcement_data['district'].value_counts().reset_index()
+district_enforcement_counts.columns = ['district', 'EnforcementActions']
+district_data = district_gdf.merge(district_population, on='district', how='left')
+district_data = district_data.merge(district_enforcement_counts, on='district', how='left')
 
-
-district_data = district_gdf.merge(district_population, how='left', left_on='judicial_d', right_on='District')
-district_data = district_data.merge(enforcement_counts, how='left', on='District')
-
+district_data['totalpopulation'] = district_data['totalpopulation'].fillna(0)
 district_data['EnforcementActions'] = district_data['EnforcementActions'].fillna(0)
-
-district_data['EnforcementPerCapita'] = district_data['EnforcementActions'] / district_data['TotalPopulation']
+district_data['EnforcementPerCapita'] = district_data['EnforcementActions'] / district_data['totalpopulation']
 district_data['EnforcementPerCapita'] = district_data['EnforcementPerCapita'].replace([float('inf'), -float('inf')], 0)
-
 fig, ax = plt.subplots(1, 1, figsize=(15, 10))
-district_data.plot(column='EnforcementPerCapita', cmap='Blues', linewidth=0.8, ax=ax, edgecolor='black',
-                   legend=True, legend_kwds={'label': "Enforcement Actions per Capita", 'shrink': 0.6})
-
-plt.title('Enforcement Actions per Capita by U.S. Attorney District (Since January 2021)')
+district_data.plot(column='EnforcementPerCapita', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='black', legend=True,
+                   legend_kwds={'label': "Enforcement Actions per Capita", 'shrink': 0.6})
+plt.title('Enforcement Actions per Capita by US Attorney District (Since January 2021)')
+plt.axis('off')
 ax.set_aspect('equal')
 ax.set_xlim(-180, -50)
 ax.set_ylim(15, 75)
-
-plt.axis('off')
 plt.show()
 
 ```
