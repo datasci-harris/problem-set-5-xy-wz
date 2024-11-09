@@ -308,7 +308,7 @@ print(f"Earliest enforcement action: Date - {earliest_action['Date']}, Title - {
 
 ```{python}
 
-file_path = "/Users/hahei/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
+file_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
 data = pd.read_csv(file_path)
 
 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
@@ -341,9 +341,6 @@ chart.show()
 * based on "Criminal and Civil Actions" vs. "State Enforcement Agencies"
 
 ```{python}
-
-file_path = "/Users/hahei/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
-data = pd.read_csv(file_path)
 
 data['Date'] = pd.to_datetime(data['Date'], errors='coerce')
 data = data.dropna(subset=['Date'])
@@ -434,7 +431,7 @@ state_counts = state_data['State'].value_counts().reset_index()
 state_counts.columns = ['State', 'Count']
 
 gdf_states = gpd.read_file(
-    "/Users/hahei/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
+    "/Users/cynthia/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
 
 gdf_states['NAME'] = gdf_states['NAME'].str.strip().str.title()
 
@@ -450,8 +447,9 @@ gdf_merged.plot(column='Count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='bl
                              'shrink': 0.6,
                              })
 
-ax.set_xlim(-130, -60)
-ax.set_ylim(20, 55)
+ax.set_aspect('equal')
+ax.set_xlim(-180, -50)
+ax.set_ylim(15, 75)
 
 plt.title('Number of State-Level Enforcement Actions by State (Since January 2021)', fontsize=20)
 plt.axis('off')
@@ -463,12 +461,6 @@ plt.show()
 ### 2. Map by District (PARTNER 2)
 
 ```{python}
-import pandas as pd
-import geopandas as gpd
-import matplotlib.pyplot as plt
-
-enforcement_data_path = '/Users/hahei/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv'
-enforcement_df = pd.read_csv(enforcement_data_path)
 
 def clean_district_name(name):
     if pd.isna(name):
@@ -481,13 +473,13 @@ def clean_district_name(name):
         return name.split('State of ')[-1].strip().lower()
     return None
 
-enforcement_df['cleaned_district'] = enforcement_df['Agency'].apply(clean_district_name)
-enforcement_df = enforcement_df.dropna(subset=['cleaned_district'])
+data['cleaned_district'] = data['Agency'].apply(clean_district_name)
+data = data.dropna(subset=['cleaned_district'])
 
-district_counts = enforcement_df['cleaned_district'].value_counts().reset_index()
+district_counts = data['cleaned_district'].value_counts().reset_index()
 district_counts.columns = ['district', 'count']
 
-shapefile_path = '/Users/hahei/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp'
+shapefile_path = '/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp'
 us_districts_gdf = gpd.read_file(shapefile_path)
 
 us_districts_gdf['district'] = us_districts_gdf['judicial_d'].str.replace('District of ', '').str.replace('District ', '').str.strip().str.lower()
@@ -521,7 +513,10 @@ print(unmatched_districts)
 
 merged_gdf['count'] = merged_gdf['count'].fillna(0)
 fig, ax = plt.subplots(1, 1, figsize=(25, 15))
-merged_gdf.plot(column='count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='0.8', legend=True)
+merged_gdf.plot(column='count', cmap='OrRd', linewidth=0.8, ax=ax, edgecolor='black', legend=True,
+                legend_kwds={'label': "Number of Enforcement Actions",
+                             'shrink': 0.6,
+                             })
 plt.title('Number of Enforcement Actions by US Attorney District')
 ax.set_aspect('equal')
 ax.set_xlim(-180, -50)
@@ -531,21 +526,108 @@ plt.show()
 
 ```
 
+
 ## Extra Credit
 
 ### 1. Merge zip code shapefile with population
 ```{python}
 
 
+import pandas as pd
+import geopandas as gpd
+import matplotlib.pyplot as plt
+import os
+
+shapefile_path = "/Users/cynthia/Desktop/gz_2010_us_860_00_500k/gz_2010_us_860_00_500k.shp"  
+population_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/population/2020_data.csv"  
+
+population_data = pd.read_csv(population_data_path)
+population_data = population_data[['NAME', 'P1_001N']].copy()  
+population_data = population_data.rename(columns={'NAME': 'ZIPCode', 'P1_001N': 'Population'})
+population_data['ZIPCode'] = population_data['ZIPCode'].str.extract(r'(\d{5})')[0]
+population_data['Population'] = pd.to_numeric(population_data['Population'], errors='coerce').fillna(0)
+
+zip_shapefile = gpd.read_file(shapefile_path)
+zip_shapefile = zip_shapefile.rename(columns={'ZCTA5': 'ZIPCode'})
+zip_shapefile['ZIPCode'] = zip_shapefile['ZIPCode'].astype(str)
+
+merged_gdf = zip_shapefile.merge(population_data, how='left', on='ZIPCode')
+
+print(merged_gdf.head())
+
+
+
 ```
 
 ### 2. Conduct spatial join
 ```{python}
+zip_shapefile_path = "/Users/cynthia/Desktop/gz_2010_us_860_00_500k/gz_2010_us_860_00_500k.shp"  
+population_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/population/2020_data.csv"  
+district_shapefile_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/US Attorney Districts Shapefile simplified_20241109/geo_export_8dfa149c-a5a0-43ab-aa3e-6a96f6f0b711.shp"  # District shapefile path
+
+import pandas as pd
+import geopandas as gpd
+
+population_data = pd.read_csv(population_data_path)
+population_data = population_data[['NAME', 'P1_001N']].copy()
+population_data = population_data.rename(columns={'NAME': 'ZIPCode', 'P1_001N': 'Population'})
+population_data['ZIPCode'] = population_data['NAME'].str.extract(r'(\d{5})')[0]
+population_data['Population'] = pd.to_numeric(population_data['Population'], errors='coerce').fillna(0)
+
+zip_gdf = gpd.read_file(zip_shapefile_path)
+zip_gdf = zip_gdf.rename(columns={'ZCTA5': 'ZIPCode'})
+zip_gdf['ZIPCode'] = zip_gdf['ZIPCode'].astype(str)
+
+zip_gdf = zip_gdf.merge(population_data, on='ZIPCode', how='left')
+
+district_gdf = gpd.read_file(district_shapefile_path)
+zip_gdf = zip_gdf.to_crs(district_gdf.crs) 
+
+zip_district_join = gpd.sjoin(zip_gdf, district_gdf, how="inner", predicate="within")
+
+district_population = zip_district_join.groupby('judicial_d')['Population'].sum().reset_index()
+district_population = district_population.rename(columns={'judicial_d': 'District', 'Population': 'TotalPopulation'})
+
+print(district_population)
+
 
 ```
 
 ### 3. Map the action ratio in each district
-```{python}
 
+
+```{python}
+enforcement_data_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/enforcement_actions_2021_1.csv"
+enforcement_data = pd.read_csv(enforcement_data_path)
+
+enforcement_data['Date'] = pd.to_datetime(enforcement_data['Date'], errors='coerce')
+enforcement_data = enforcement_data[enforcement_data['Date'] >= '2021-01-01']
+
+enforcement_data['District'] = enforcement_data['Agency'].str.extract(r'(\b.*District of .*\b)', expand=False)
+
+enforcement_counts = enforcement_data.groupby('District').size().reset_index(name='EnforcementActions')
+
+district_gdf = gpd.read_file(district_shapefile_path)
+
+
+district_data = district_gdf.merge(district_population, how='left', left_on='judicial_d', right_on='District')
+district_data = district_data.merge(enforcement_counts, how='left', on='District')
+
+district_data['EnforcementActions'] = district_data['EnforcementActions'].fillna(0)
+
+district_data['EnforcementPerCapita'] = district_data['EnforcementActions'] / district_data['TotalPopulation']
+district_data['EnforcementPerCapita'] = district_data['EnforcementPerCapita'].replace([float('inf'), -float('inf')], 0)
+
+fig, ax = plt.subplots(1, 1, figsize=(15, 10))
+district_data.plot(column='EnforcementPerCapita', cmap='Blues', linewidth=0.8, ax=ax, edgecolor='black',
+                   legend=True, legend_kwds={'label': "Enforcement Actions per Capita", 'shrink': 0.6})
+
+plt.title('Enforcement Actions per Capita by U.S. Attorney District (Since January 2021)')
+ax.set_aspect('equal')
+ax.set_xlim(-180, -50)
+ax.set_ylim(15, 75)
+
+plt.axis('off')
+plt.show()
 
 ```
