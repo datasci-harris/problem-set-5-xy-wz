@@ -168,7 +168,7 @@ print(df.head())
 
 5. Data Extraction:
    For each enforcement item:
-   - Extract the title, date, category, and link (if available).
+   - Extract the title, date, category, agency, and link.
    - Skip entries where the date is earlier than the specified start date.
    - Append valid data to the corresponding lists.
 
@@ -176,7 +176,7 @@ print(df.head())
    If no enforcement items are found on the page, or if all data on the page is invalid, terminate the scraping process.
 
 7. Add Delay:
-   Add a delay (e.g., `time.sleep(1)`) between requests to prevent server overload or blocking.
+   Add a delay between requests to prevent server overload or blocking.
 
 8. Data Saving:
    After the loop, create a DataFrame with the collected data and save it as a CSV file. The filename should include the `start_year` and `start_month`.
@@ -404,7 +404,7 @@ subcategory_chart.show()
 ### 1. Map by State (PARTNER 1)
 
 ```{python}
-
+import geopandas as gpd
 import matplotlib.pyplot as plt
 
 state_data = data[data['Agency'].str.contains(
@@ -430,7 +430,7 @@ state_counts = state_data['State'].value_counts().reset_index()
 state_counts.columns = ['State', 'Count']
 
 gdf_states = gpd.read_file(
-    "/Users/hahei/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
+    "/Users/cynthia/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp")
 
 gdf_states['NAME'] = gdf_states['NAME'].str.strip().str.title()
 
@@ -459,8 +459,7 @@ plt.show()
 ### 2. Map by District (PARTNER 2)
 
 ```{python}
-file_path = "enforcement_actions_2021_1.csv"
-data = pd.read_csv(file_path)
+import re
 
 data["District"] = data["Agency"].apply(
     lambda x: (
@@ -482,7 +481,7 @@ district_data["District"] = (
 district_counts = district_data["District"].value_counts().reset_index()
 district_counts.columns = ["District", "Count"]
 
-shapefile_path = "/Users/hahei/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp"
+shapefile_path = "/Users/cynthia/Desktop/problem-set-5-xy-wz/cb_2018_us_state_500k/cb_2018_us_state_500k.shp"
 gdf_districts = gpd.read_file(shapefile_path)
 
 gdf_districts["District"] = gdf_districts["NAME"].str.strip()
